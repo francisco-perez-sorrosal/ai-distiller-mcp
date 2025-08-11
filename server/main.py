@@ -12,7 +12,7 @@ from loguru import logger
 import mcp.types as types
 
 from server.gmail import GmailAPIClient, emails_to_json
-from server.utils import ensure_datetime
+from server.utils import ensure_datetime, get_current_prompt
 
 # Initialize server
 mcp = FastMCP("ai-news-distiller-mcp")
@@ -21,9 +21,22 @@ mcp = FastMCP("ai-news-distiller-mcp")
 lm = dspy.LM("anthropic/claude-3-5-haiku-20241022")
 
 @mcp.tool()
-def say_smth_stupid() -> list[str]:
-    """Returns a stupid message."""
-    return lm("Say something stupid", temperature=1.0)
+def say_smth_stupid(topic: str) -> list[str]:
+    """Generate humorous or lighthearted responses about a given topic.
+    
+    Args:
+        topic (str): The topic to generate humorous content about.
+            Examples: "AI", "technology", "work", "life".
+    
+    Returns:
+        list[str]: A list of humorous or lighthearted responses about the topic.
+            Each response is a string containing a joke, pun, or funny observation.
+    
+    Example:
+        >>> say_smth_stupid("AI")
+        >>> say_smth_stupid("technology")
+    """
+    return lm(f"Say something stupid about {topic}", temperature=1.0)
 
 
 logger.info("Initializing Gmail client. Current directory: {os.getcwd()}")
@@ -50,6 +63,28 @@ class Distiller(dspy.Module):
         self.review_emails = dspy.ChainOfThought(ReviewEmails)
     
     def forward(self, emails: List[str], topic: str, period: str) -> str:
+        """Process emails through the review pipeline to extract relevant content.
+        
+        Args:
+            emails (List[str]): List of email content strings to process.
+                Each email should be a string containing the email body text.
+            topic (str): The topic or theme to filter emails by.
+                Examples: "AI news", "tech updates", "industry insights".
+            period (str): The time period context for the emails.
+                Examples: "current week", "last month", "Q1 2024".
+        
+        Returns:
+            str: A concatenated string of selected emails in JSON format.
+                Only emails relevant to the specified topic are included.
+                Each email is formatted as a JSON string with title, sender, date, and content.
+        
+        Raises:
+            Exception: If there's an error in the email review process.
+        
+        Example:
+            >>> distiller = Distiller()
+            >>> result = distiller.forward(["email1", "email2"], "AI news", "this week")
+        """
         logger.info(f"Calling review_emails with {emails}, {topic}, {period}")
         result = self.review_emails(emails=emails, topic=topic, period=period)
         logger.info("--------------------------------")
@@ -66,57 +101,187 @@ class Distiller(dspy.Module):
         
         return " ".join(string_emails)
 
-@mcp.tool()
-def distill_news(emails: List[str], topic: str = "AI news", period: str = "current week") -> str:
-    """Retrieve the list of emails from the period specified and filter only those that are relevant to the topic"""
-    distiller = Distiller()
-    result = distiller(emails=emails, topic=topic, period=period)
-    return result
+# @mcp.tool()
+# def distill_news(emails: List[str], topic: str = "AI news", period: str = "current week") -> str:
+#     """Retrieve the list of emails from the period specified and filter only those that are relevant to the topic"""
+#     distiller = Distiller()
+#     result = distiller(emails=emails, topic=topic, period=period)
+#     return result
 
 
 @mcp.tool()
 def get_user_profile() -> str:
-    """Get the user profile from the Gmail client"""
+    """Retrieve the authenticated user's Gmail profile information.
+    
+    Returns:
+        str: Formatted string containing user profile details including:
+            - Email address
+            - Total number of messages in the account
+            - Authentication status
+    
+    Raises:
+        Exception: If there's an error retrieving the user profile from Gmail API.
+    
+    Example:
+        >>> get_user_profile()
+        "👤 Authenticated as: user@example.com\n📧 Total messages in account: 15420"
+    """
     profile = gmail_client.get_user_profile()
     if profile:
         return f"👤 Authenticated as: {profile.get('email')}\n📧 Total messages in account: {profile.get('messages_total', 'Unknown')}"
     else:
         return "❌ Error getting profile"
 
+# Dummy feedback storage TODO: Implement a proper feedback storage in OxenAI
+feedback = {}
 
 @mcp.tool()
-def get_emails(start_date: str = "yesterday", end_date: str = "today", max_emails: int = 10) -> str:
-    """Get the emails from the period specified. If no period is specified, get the emails from the current day."""
+def provide_feedback(strengths: str, weaknesses: str, suggestions: str) -> str:
+    """Accept the user-provided feedback and classify it into strengths, weaknesses, and suggestions.
+    
+    Args:
+        strengths (str): The strengths of the news digest.
+        weaknesses (str): The weaknesses of the news digest.
+        suggestions (str): The suggestions for improving the news digest.
+    """
+    # TODO Save feedback to the database
+    # TODO Trigger the prompt update if necessary
+    global feedback
+    feedback = {
+        "strengths": feedback.get("strengths", "") + strengths,
+        "weaknesses": feedback.get("weaknesses", "") + weaknesses,
+        "suggestions": feedback.get("suggestions", "") + suggestions
+    }
+    return "Thank you for the feedback! We will use it to improve your future news digest."
+
+@mcp.tool()
+def get_emails(start_date: str = "yesterday", end_date: str = "today", max_emails: int = 3) -> str:
+    """Get emails from the specified date range.
+    
+    Args:
+        start_date (str): Start date for email retrieval. 
+            Accepts absolute dates in "YYYY-MM-DD" format or relative 
+            days (just "today" and "yesterday"). Defaults to "yesterday".
+        end_date (str): End date for email retrieval.
+            Accepts absolute dates in "YYYY-MM-DD" format or relative 
+            days (just "today" and "yesterday"). Defaults to "today".    
+        max_emails (int): Maximum number of emails to retrieve.
+            Must be a positive integer. Defaults to 3.
+    
+    Returns:
+        str: JSON string containing email data with basic information including
+            sender, subject, date, and content preview.
+    
+    Raises:
+        ValueError: If max_emails is not a positive integer.
+        Exception: If there's an error retrieving emails from Gmail.
+    
+    Example:
+        >>> get_emails("yesterday", "today", 5)
+        >>> get_emails("2024-01-01", "2024-01-07", 10)
+    """
     start_datetime = ensure_datetime(start_date)
     end_datetime = ensure_datetime(end_date)
-    emails = gmail_client.get_emails_by_date_range(start_datetime, end_datetime, basic_data=True, max_results=max_emails)
+    emails = gmail_client.get_emails_by_date_range(start_datetime, end_datetime, basic_data=False, include_body=True, max_results=max_emails)
     return emails_to_json(emails)
 
-# Old stuff. Keeping it here just for reference.
-
-# @mcp.tool()
-# def distill_ai_news_instructions(period: str = "current month", number_of_news_items: int = 50) -> str:
-#     """Returns instructions to distill AI news and events."""
-#     return ai_news_distiller(period, number_of_news_items)
+################################################################################
+# Main tool/prompt
+################################################################################
 
 
-# @mcp.prompt()
-# def ai_news_distiller(period: str = "current month", number_of_news_items: int = 50) -> str:
-#     prompt = f"""Review {period} Gmail emails and identify senders corresponding to AI-related newsletters. For each identified newsletter, read all issues from the past month. From these, compile a digest of at least {number_of_news_items} notable AI news items. For each news item:
-#         - Include a one-line summary as a headline.
-#         - Add the publication date.
-#         - Provide a brief, clear technical summary for a knowledgeable audience.
-#         - Insert a clickable source link.
-#         - Assign an importance rating from 1 (minor) to 5 (high impact).
-#         - Organize the news chronologically or by theme for readability.
-#     At the end, include a separate section listing AI-related events happening in San Francisco during the current month, with event names, dates, venues, and source links.
-#     Ensure the digest is concise, technically accurate, and accessible to expert readers, while preserving essential details and trends.
-#     To distill the news, use only the information provided in the emails. Do an exhaustive search in the emails retrieving all the information available to satisfy the request requirements.
-#     """
-#     return prompt
+@mcp.tool()
+def distill_news(topic: str = "AI news", start_period: str = "yesterday", end_period: str = "today", number_of_emails: int = 3, number_of_news_items: int = 5) -> str:   
+    """Generate instructions for LLM to distill news from emails based on user preferences.
+    
+    Args:
+        topic (str): The topic or theme to focus on when distilling news.
+            Examples: "AI news", "tech updates", "industry insights".
+            Defaults to "AI news".
+        start_period (str): Start date for the news distillation period.
+            Accepts relative dates like "yesterday", "3 days ago", "last week",
+            or absolute dates in "YYYY-MM-DD" format. Defaults to "yesterday".
+        end_period (str): End date for the news distillation period.
+            Accepts relative dates like "today", "3 days ago", "last week",
+            or absolute dates in "YYYY-MM-DD" format. Defaults to "today".
+        number_of_emails (int): Number of emails to retrieve and analyze.
+            Must be a positive integer. Defaults to 3.
+        number_of_news_items (int): Target number of news items to extract.
+            Must be a positive integer. Defaults to 3.
+    
+    Returns:
+        str: Structured prompt containing instructions for the LLM to:
+            1. Retrieve emails using the get_emails tool
+            2. Apply topic-specific distillation using get_prompt
+            3. Take into account the user feedback (if any)
+            4. Request user feedback and store it
+    
+    Raises:
+        ValueError: If number_of_emails or number_of_news_items are not positive integers.
+        Exception: If there's an error generating the distillation instructions.
+    
+    Example:
+        >>> distill_news("AI research", "last week", "today", 5, 15)
+        >>> distill_news("tech updates", "2024-01-01", "2024-01-07", 10, 20)
+    """
+    structured_prompt = f"""Follow this instructions to distill the news about this topic <topic>{topic}</topic> for the user:
+    1. Get user {number_of_emails} emails for the period specified using the get_emails tool
+    2. {get_prompt(topic, start_period, end_period, number_of_emails, number_of_news_items)}
+    3. Before crafting the user response, take into account the following user feedback (if any):
+        <feedback>{feedback}</feedback>
+    4. Finally, ask for more feedback to the user about the news digest, and register it using the provide_feedback tool.
+    Do not come with an update of the information right away. Just thank the user for the
+    feedback if necessary or wait for the user to explicitly ask for it."""
+    return structured_prompt
+
+
+@mcp.prompt()
+def get_prompt(topic: str, start_period: str = "yesterday", end_period: str = "today", number_of_news_items: int = 5, location: str = "San Francisco") -> str:
+    """Retrieve the optimal prompt for news distillation based on topic and context.
+    
+    Args:
+        topic (str): The topic or theme for news distillation.
+            Examples: "AI news", "tech updates", "industry insights".
+            Used to select topic-specific prompt templates.
+        start_period (str): Start date for the news period.
+            Accepts absolute dates in "YYYY-MM-DD" format or relative days (just "today" and "yesterday"). Defaults to "yesterday".
+        end_period (str): End date for the news period.
+            Accepts absolute dates in "YYYY-MM-DD" format or relative days (just "today" and "yesterday"). Defaults to "today".
+        number_of_news_items (int): Number of news items to be included in the digest.
+            Used to adjust prompt complexity and output expectations.
+            Must be a positive integer. Defaults to 5.
+        location (str): Geographic location context for news relevance.
+            Examples: "San Francisco", "New York", "London".
+            Used to tailor location-specific news insights. Defaults to "San Francisco".
+    
+    Returns:
+        str: Curated prompt template optimized for the given topic and context.
+            The prompt is retrieved from a database/filesystem and may be
+            updated based on user feedback to improve distillation quality.
+    
+    Raises:
+        Exception: If there's an error retrieving the prompt from storage.
+        ValueError: If number_emails is not a positive integer.
+    
+    Note:
+        This function retrieves prompts that are continuously curated and improved
+        based on user feedback to ensure optimal news distillation results.
+    
+    Example:
+        >>> get_prompt("AI research", "last week", "today", 3, "San Francisco")
+        >>> get_prompt("tech updates", "2024-01-01", "2024-01-07", 5, "New York")
+    """
+    prompt = get_current_prompt(topic, start_period, end_period, number_of_news_items, location)
+    return prompt
 
 
 def main(debug: bool = False):
+    """Initialize and run the AI News Distiller MCP Server.
+    
+    Args:
+        debug (bool): Enable debug mode for additional logging and verbose output.
+            Defaults to False.
+    """
     dspy.configure(lm=lm)
 
     try:

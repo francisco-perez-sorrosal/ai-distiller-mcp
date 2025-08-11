@@ -2,7 +2,7 @@
   "dxt_version": "0.1",
   "name": "ai-news-distiller-mcp",
   "version": "1.0.0",
-  "description": "A DXT extension to trigger the review of email newsletters to distill AI news",
+  "description": "A DXT extension to trigger the review of email newsletters to distill news about a specific topic with AI",
   "author": {
     "name": "Francisco Perez-Sorrosal"
   },
@@ -23,8 +23,8 @@
   },
   "tools": [
     {
-      "name": "distill_ai_news",
-      "description": "Returns instructions to distill AI news and events."
+      "name": "distill_news",
+      "description": "Returns instructions to distill news and events about a specific topic."
     },
     {
       "name": "get_user_profile",
@@ -39,6 +39,18 @@
           "start_date": { "type": "string", "description": "Start date for email search" },
           "end_date": { "type": "string", "description": "End date for email search" },
           "max_emails": { "type": "integer", "description": "Maximum number of emails to retrieve" }
+        }
+      }
+    },
+    {
+      "name": "provide_feedback",
+      "description": "Accept the user-provided feedback and classify it into strengths, weaknesses, and suggestions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "strengths": { "type": "string", "description": "Strengths of the news digest" },
+          "weaknesses": { "type": "string", "description": "Weaknesses of the news digest" },
+          "suggestions": { "type": "string", "description": "Suggestions for improving the news digest" }
         }
       }
     }
