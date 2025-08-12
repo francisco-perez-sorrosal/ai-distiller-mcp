@@ -10,7 +10,7 @@ dependencies = [
     "typer>=0.16.0,<0.17", 
     "loguru>=0.7.3,<0.8", 
     "pydantic>=2.0,<3",
-    "dspy>=2.6.27,<3", "google-auth>=2.40.3,<3", "google-auth-oauthlib>=1.2.2,<2", "google-auth-httplib2>=0.2.0,<0.3", "google-api-python-client>=2.178.0,<3",
+    "dspy>=2.6.27,<3", "google-auth>=2.40.3,<3", "google-auth-oauthlib>=1.2.2,<2", "google-auth-httplib2>=0.2.0,<0.3", "google-api-python-client>=2.178.0,<3", "litellm[proxy]>=1.75.5.post1,<2",
 ]
 
 [tool.pixi.project]

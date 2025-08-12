@@ -1,5 +1,6 @@
 import sys
 import shutil
+from tkinter import Frame
 from typing import List
 
 from pydantic import BaseModel, Field
@@ -9,10 +10,14 @@ import dspy
 from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 from loguru import logger
+from rich import console
+from rich.rule import Rule
 import mcp.types as types
 
+from server.dataset_generator import DatasetGenerator
 from server.gmail import GmailAPIClient, emails_to_json
-from server.utils import ensure_datetime, get_current_prompt
+from server.prompt_curator import PromptCurator
+from server.utils import ensure_datetime, get_best_prompt_template, set_prompt_template
 
 # Initialize server
 mcp = FastMCP("ai-news-distiller-mcp")
@@ -20,28 +25,16 @@ mcp = FastMCP("ai-news-distiller-mcp")
 # dspy
 lm = dspy.LM("anthropic/claude-3-5-haiku-20241022")
 
-@mcp.tool()
-def say_smth_stupid(topic: str) -> list[str]:
-    """Generate humorous or lighthearted responses about a given topic.
-    
-    Args:
-        topic (str): The topic to generate humorous content about.
-            Examples: "AI", "technology", "work", "life".
-    
-    Returns:
-        list[str]: A list of humorous or lighthearted responses about the topic.
-            Each response is a string containing a joke, pun, or funny observation.
-    
-    Example:
-        >>> say_smth_stupid("AI")
-        >>> say_smth_stupid("technology")
-    """
-    return lm(f"Say something stupid about {topic}", temperature=1.0)
+# Dummy feedback storage TODO: Implement a proper feedback storage in OxenAI
+feedback = {}
 
 
 logger.info("Initializing Gmail client. Current directory: {os.getcwd()}")
 gmail_client = GmailAPIClient(credentials_file="credentials.json")
-                
+
+
+beautiful_console = console.Console()
+
 class Email(BaseModel):
     title: str = Field(description="Email title")
     sender: str = Field(description="Email sender")
@@ -110,6 +103,26 @@ class Distiller(dspy.Module):
 
 
 @mcp.tool()
+def create_dataset(num_cases: int = 3):
+    """For test purposes only, allow invoke from here"""
+    
+    goal = """Generate a comprehensive prompt template for a news digest by analyzing Gmail 
+    newsletters within a specified timeframe to extract and organize 
+    topic-specific news items with detailed metadata and possible local events."""
+    
+    prompt_inputs_spec={
+        "start_period": "Beginning date/timeframe for email analysis - defines the lower bound of the search window",
+        "end_period": "Ending date/timeframe for email analysis - defines the upper bound of the search window", 
+        "topic": "Subject matter focus for filtering newsletters and news items (e.g., 'AI news', 'tech', 'blockchain')",
+        "number_of_news_items": "Maximum quantity of news items to include in the final digest output",
+        "location": "Geographic area for filtering relevant local events to include in the events section"
+    }
+    
+    dataset_generator = DatasetGenerator(task_description=goal, prompt_inputs_spec=prompt_inputs_spec, filename="dataset.json")
+    dataset_file = dataset_generator.run(num_cases=num_cases)
+    return f"Dataset created successfully in {dataset_file}"
+
+@mcp.tool()
 def get_user_profile() -> str:
     """Retrieve the authenticated user's Gmail profile information.
     
@@ -132,8 +145,33 @@ def get_user_profile() -> str:
     else:
         return "❌ Error getting profile"
 
-# Dummy feedback storage TODO: Implement a proper feedback storage in OxenAI
-feedback = {}
+
+@mcp.tool()
+def curate_current_prompt(topic: str) -> str:
+    """Retrieve the user feedback stored in the database and curate the current prompt based on it"""
+    prompt_curator = PromptCurator()
+    
+    # 1. Get the best prompt for the topic at hand
+    best_prompt_template_representation = get_best_prompt_template(topic)
+    beautiful_console.print(Rule(f"Best prompt template:\n{best_prompt_template_representation}"))
+    # 2. Get the current feedback
+    feedback_string = "\n".join([f"{key}: {value}" for key, value in feedback.items()])
+    beautiful_console.print(Rule(f"Current feedback:\n{feedback_string}"))
+    # 3. Curate the prompt
+    curated_prompt = prompt_curator.forward(prompt=best_prompt_template_representation.prompt_template, feedback=feedback_string)
+    beautiful_console.print(Rule(f"Curated prompt:\n{curated_prompt}"))
+    # 4. Evaluate the result
+    # TODO: Implement the evaluation logic
+    # TODO: Implement the update logic
+    # 5. If the evaluated result is better than the best prompt, update the best prompt
+    if curated_prompt != best_prompt_template_representation:
+        beautiful_console.print(Rule(f"Updating best prompt template for topic {topic}"))
+        # TODO: Update the best prompt template in the database/filesystem
+        set_prompt_template(topic, 0.0, curated_prompt, {})
+        
+        
+    return curated_prompt
+
 
 @mcp.tool()
 def provide_feedback(strengths: str, weaknesses: str, suggestions: str) -> str:
@@ -271,7 +309,15 @@ def get_prompt(topic: str, start_period: str = "yesterday", end_period: str = "t
         >>> get_prompt("AI research", "last week", "today", 3, "San Francisco")
         >>> get_prompt("tech updates", "2024-01-01", "2024-01-07", 5, "New York")
     """
-    prompt = get_current_prompt(topic, start_period, end_period, number_of_news_items, location)
+    prompt_template = get_best_prompt_template(topic)
+    prompt = prompt_template.prompt_template.format(
+        start_period=start_period,
+        end_period=end_period,
+        topic=topic,
+        number_of_news_items=number_of_news_items,
+        location=location
+    )
+    logger.info(f"Retrieved prompt template for topic {prompt_template.topic} (v. {prompt_template.version})")
     return prompt
 
 

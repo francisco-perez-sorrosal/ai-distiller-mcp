@@ -23,12 +23,12 @@
   },
   "tools": [
     {
-      "name": "distill_news",
-      "description": "Returns instructions to distill news and events about a specific topic."
-    },
-    {
       "name": "get_user_profile",
       "description": "Returns the user profile from the Gmail client."
+    },      
+    {
+      "name": "distill_news",
+      "description": "Returns instructions to distill news and events about a specific topic."
     },
     {
       "name": "get_emails",

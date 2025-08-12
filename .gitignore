@@ -131,6 +131,10 @@ celerybeat.pid
 server/lib
 server/__pycache__/
 
+# Prompt template database
+# prompt_templates.json
+prompt_templates_backup_*.json
+
 # Oauth stuff
 token.json
 client_secret*.json

@@ -1,0 +1,17 @@
+[
+  {
+    "prompt_inputs": {
+      "start_period": "2024-04-15",
+      "end_period": "2024-04-30",
+      "topic": "AI and Startup Innovations",
+      "number_of_news_items": 7,
+      "location": "San Francisco"
+    },
+    "solution_criteria": [
+      "Correctly extract news items within the specified date range",
+      "Maintain focus on AI and startup innovation topics",
+      "Include local San Francisco events",
+      "Limit output to specified number of news items"
+    ]
+  }
+]

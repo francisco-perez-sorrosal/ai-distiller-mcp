@@ -1,0 +1,217 @@
+{
+  "AI news_v1": {
+    "prompt_template": "Review user Gmail emails from {start_period} to {end_period} and identify senders corresponding to {topic}-related newsletters. \n    Do not use any other sources of information but the emails.\n    For each identified newsletter, read all issues from the past month. From these, compile a \n    digest of at least {number_of_news_items} notable AI news items. For each news item include at least:\n        - Include a one-line summary as a headline.\n        - Add the publication date.\n        - Provide a brief, clear technical summary for a knowledgeable audience.\n        - Insert a clickable source link.\n        - Assign an importance rating from 1 (minor) to 5 (high impact).\n        - Organize the news chronologically or by theme for readability.\n    At the end, include a separate section listing {topic}-related events happening in {location} during the current month, with event names, dates, venues, and source links.\n    Ensure the digest is concise, technically accurate, and accessible to expert readers, while preserving essential details and trends.\n    To distill the news, use only the information provided in the emails. Do an exhaustive search in the emails retrieving all the information available to satisfy the request requirements.",
+    "placeholders": {
+      "start_period": "str",
+      "end_period": "str",
+      "topic": "str",
+      "number_of_news_items": "int",
+      "location": "str"
+    },
+    "created_at": "2025-08-11T15:31:22.776035",
+    "updated_at": "2025-08-11T15:31:22.776039",
+    "version": 1,
+    "topic": "AI news",
+    "score": 0.0
+  },
+  "tech news_v6": {
+    "prompt_template": "Summarize {number} tech articles about {topic} from {start_date} to {end_date}. Focus on {focus_area}.",
+    "placeholders": {
+      "number": "int",
+      "topic": "str",
+      "start_date": "str",
+      "end_date": "str",
+      "focus_area": "str"
+    },
+    "created_at": "2025-08-11T15:31:22.776378",
+    "updated_at": "2025-08-11T15:55:22.374208",
+    "version": 6,
+    "topic": "tech news",
+    "score": 0.0
+  },
+  "research papers_v6": {
+    "prompt_template": "Analyze {count} research papers on {subject} published between {start_year} and {end_year}. Extract key findings and methodologies.",
+    "placeholders": {
+      "count": "int",
+      "subject": "str",
+      "start_year": "int",
+      "end_year": "int"
+    },
+    "created_at": "2025-08-11T15:31:22.776972",
+    "updated_at": "2025-08-11T15:55:22.375230",
+    "version": 6,
+    "topic": "research papers",
+    "score": 0.0
+  },
+  "research papers_v7": {
+    "prompt_template": "Analyze {count} research papers on {subject} published between {start_year} and {end_year}. Extract key findings and methodologies.",
+    "placeholders": {
+      "count": "int",
+      "subject": "str",
+      "start_year": "int",
+      "end_year": "int"
+    },
+    "created_at": "2025-08-11T16:09:13.022500",
+    "updated_at": "2025-08-11T16:09:13.022506",
+    "version": 7,
+    "topic": "research papers",
+    "score": 7.0
+  },
+  "research papers_v8": {
+    "prompt_template": "Analyze {count} research papers on {subject} published between {start_year} and {end_year}. Extract key findings, methodologies, and provide critical analysis.",
+    "placeholders": {
+      "count": "int",
+      "subject": "str",
+      "start_year": "int",
+      "end_year": "int"
+    },
+    "created_at": "2025-08-11T16:09:13.023292",
+    "updated_at": "2025-08-11T16:09:13.023294",
+    "version": 8,
+    "topic": "research papers",
+    "score": 9.2
+  },
+  "tech news_v7": {
+    "prompt_template": "Summarize {number} tech articles about {topic} from {start_date} to {end_date}. Focus on {focus_area}.",
+    "placeholders": {
+      "number": "int",
+      "topic": "str",
+      "start_date": "str",
+      "end_date": "str",
+      "focus_area": "str"
+    },
+    "created_at": "2025-08-11T16:09:13.023677",
+    "updated_at": "2025-08-11T16:09:13.023678",
+    "version": 7,
+    "topic": "tech news",
+    "score": 8.5
+  },
+  "research papers_v9": {
+    "prompt_template": "Analyze {count} research papers on {subject} published between {start_year} and {end_year}. Extract key findings and methodologies.",
+    "placeholders": {
+      "count": "int",
+      "subject": "str",
+      "start_year": "int",
+      "end_year": "int"
+    },
+    "created_at": "2025-08-11T16:09:13.024283",
+    "updated_at": "2025-08-11T16:09:13.024286",
+    "version": 9,
+    "topic": "research papers",
+    "score": 0.0
+  },
+  "research papers_v10": {
+    "prompt_template": "Analyze {count} research papers on {subject} published between {start_year} and {end_year}. Extract key findings and methodologies.",
+    "placeholders": {
+      "count": "int",
+      "subject": "str",
+      "start_year": "int",
+      "end_year": "int"
+    },
+    "created_at": "2025-08-11T16:09:49.128714",
+    "updated_at": "2025-08-11T16:09:49.128719",
+    "version": 10,
+    "topic": "research papers",
+    "score": 7.0
+  },
+  "research papers_v11": {
+    "prompt_template": "Analyze {count} research papers on {subject} published between {start_year} and {end_year}. Extract key findings, methodologies, and provide critical analysis.",
+    "placeholders": {
+      "count": "int",
+      "subject": "str",
+      "start_year": "int",
+      "end_year": "int"
+    },
+    "created_at": "2025-08-11T16:09:49.129626",
+    "updated_at": "2025-08-11T16:09:49.129631",
+    "version": 11,
+    "topic": "research papers",
+    "score": 9.2
+  },
+  "tech news_v8": {
+    "prompt_template": "Summarize {number} tech articles about {topic} from {start_date} to {end_date}. Focus on {focus_area}.",
+    "placeholders": {
+      "number": "int",
+      "topic": "str",
+      "start_date": "str",
+      "end_date": "str",
+      "focus_area": "str"
+    },
+    "created_at": "2025-08-11T16:09:49.130153",
+    "updated_at": "2025-08-11T16:09:49.130154",
+    "version": 8,
+    "topic": "tech news",
+    "score": 8.5
+  },
+  "research papers_v12": {
+    "prompt_template": "Analyze {count} research papers on {subject} published between {start_year} and {end_year}. Extract key findings and methodologies.",
+    "placeholders": {
+      "count": "int",
+      "subject": "str",
+      "start_year": "int",
+      "end_year": "int"
+    },
+    "created_at": "2025-08-11T16:09:49.130874",
+    "updated_at": "2025-08-11T16:09:49.130875",
+    "version": 12,
+    "topic": "research papers",
+    "score": 0.0
+  },
+  "research papers_v13": {
+    "prompt_template": "Analyze {count} research papers on {subject} published between {start_year} and {end_year}. Extract key findings and methodologies.",
+    "placeholders": {
+      "count": "int",
+      "subject": "str",
+      "start_year": "int",
+      "end_year": "int"
+    },
+    "created_at": "2025-08-11T16:20:43.102369",
+    "updated_at": "2025-08-11T16:20:43.102374",
+    "version": 13,
+    "topic": "research papers",
+    "score": 7.0
+  },
+  "research papers_v14": {
+    "prompt_template": "Analyze {count} research papers on {subject} published between {start_year} and {end_year}. Extract key findings, methodologies, and provide critical analysis.",
+    "placeholders": {
+      "count": "int",
+      "subject": "str",
+      "start_year": "int",
+      "end_year": "int"
+    },
+    "created_at": "2025-08-11T16:20:43.103118",
+    "updated_at": "2025-08-11T16:20:43.103120",
+    "version": 14,
+    "topic": "research papers",
+    "score": 9.2
+  },
+  "tech news_v9": {
+    "prompt_template": "Summarize {number} tech articles about {topic} from {start_date} to {end_date}. Focus on {focus_area}.",
+    "placeholders": {
+      "number": "int",
+      "topic": "str",
+      "start_date": "str",
+      "end_date": "str",
+      "focus_area": "str"
+    },
+    "created_at": "2025-08-11T16:20:43.105144",
+    "updated_at": "2025-08-11T16:20:43.105149",
+    "version": 9,
+    "topic": "tech news",
+    "score": 8.5
+  },
+  "research papers_v15": {
+    "prompt_template": "Analyze {count} research papers on {subject} published between {start_year} and {end_year}. Extract key findings and methodologies.",
+    "placeholders": {
+      "count": "int",
+      "subject": "str",
+      "start_year": "int",
+      "end_year": "int"
+    },
+    "created_at": "2025-08-11T16:20:43.106105",
+    "updated_at": "2025-08-11T16:20:43.106107",
+    "version": 15,
+    "topic": "research papers",
+    "score": 0.0
+  }
+}
