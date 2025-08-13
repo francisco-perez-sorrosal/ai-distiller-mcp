@@ -6,13 +6,24 @@ from statistics import mean
 from typing import Callable
 
 from loguru import logger
+from pydantic import BaseModel
+from rich.console import Console
+from rich.panel import Panel
 
-from server import dataset_generator
-from anthropic_course.conversation import Conversation
-from anthropic_course.dataset_generator import DatasetGenerator
-from anthropic_course.grader import Grader
-from anthropic_course.utils import generate_filename_from_prompt, generate_filename_from_prompt_function, generate_prompt_evaluation_report
+from server.dataset_generator import DatasetGenerator
+from server.grader import Grader
+from server.grader import TestCaseScores
 
+class TestCaseResults(BaseModel):
+    test_case: dict
+    generated_output: str
+    test_case_result: TestCaseScores
+    
+class EvalResults(BaseModel):
+    task_description: str
+    test_case_results: list[TestCaseResults]
+    average_score: float
+    
 class EvalPipeline:
 
     def __init__(self, dataset_generator:DatasetGenerator, grader:Grader, prompt_function:Callable, max_parallel_tasks:int = 3):
@@ -21,37 +32,33 @@ class EvalPipeline:
         self.grader = grader
         self.prompt_function = prompt_function
         self.max_parallel_tasks = max_parallel_tasks
+        self.console = Console()
+        
         
     def load_dataset(self, dataset_file:str):
         with open(dataset_file, "r") as f:
             return json.load(f)
 
-    def run_test_case(self, test_case, extra_criteria:str | None = None, run_syntax_grade:bool = False) -> dict:
+    def run_test_case(self, test_case, extra_criteria:str | None = None) -> TestCaseResults:
         """Calls prompt_function, then grades the result"""
         
-        logger.info(f"Running test case: {test_case}")
+        self.console.print(Panel(f"Running test case: {test_case}", border_style="green"))
         prompt_generated_output = self.prompt_function(test_case["prompt_inputs"])
         
         # Grade the output
         model_grade = self.grader.grade_by_model(test_case, prompt_generated_output, extra_criteria)
-        if run_syntax_grade:
-            syntax_grade = self.grader.grade_syntax(test_case, prompt_generated_output)
-        else:
-            syntax_grade = 0
         
-        # Calculate the final score
-        final_score = (model_grade["score"] + syntax_grade) / (2 if run_syntax_grade else 1)
-        
-        return {
-            "test_case": test_case,
-            "generated_output": prompt_generated_output,
-            "score": final_score,
-            "reasoning": model_grade["reasoning"],
-            "strengths": model_grade["strengths"],
-            "weaknesses": model_grade["weaknesses"]
-        }
+        # Calculate the final score if requires more complex grading
+        final_score = model_grade.score
+        logger.info(f"\nFinal score: {final_score}")
+                
+        return TestCaseResults(
+            test_case=test_case,
+            generated_output=prompt_generated_output,
+            test_case_result=model_grade
+        )
     
-    def run(self, extra_criteria:str | None = None, dataset_file:str | None = None, num_cases:int = 5, run_syntax_grade:bool = False) -> dict:
+    def run(self, extra_criteria:str | None = None, dataset_file:str | None = None, num_cases:int = 5) -> EvalResults:
         """Loads the dataset and calls run_test_case with each case"""
         if not dataset_file:
             if not self.dataset:
@@ -75,7 +82,6 @@ class EvalPipeline:
                     self.run_test_case,
                     test_case,
                     extra_criteria,
-                    run_syntax_grade,
                 ): test_case for test_case in self.dataset
             }
             for future in concurrent.futures.as_completed(test_case_future):
@@ -96,20 +102,41 @@ class EvalPipeline:
             logger.error("Returned dictionary does not contain a 'score' key")
             raise Exception(e)
             
-        eval_results = {
-            "task_description": self.dataset_generator.task_description,
-            "results": results,
-            "average_score": average_score
-        }
+        eval_results = EvalResults(
+            task_description=self.dataset_generator.task_description,
+            test_case_results=results,
+            average_score=average_score
+        )
     
-        html_report_filename = generate_filename_from_prompt_function(self.prompt_function, extension="html")
-        html_report = generate_prompt_evaluation_report(eval_results)
-        with open(html_report_filename, "w", encoding="utf-8") as f:
-            f.write(html_report)
-        logger.info(f"Grader Results saved in {html_report_filename}")
+        # html_report_filename = generate_filename_from_prompt_function(self.prompt_function, extension="html")
+        # html_report = generate_prompt_evaluation_report(eval_results)
+        # with open(html_report_filename, "w", encoding="utf-8") as f:
+        #     f.write(html_report)
+        # logger.info(f"Grader Results saved in {html_report_filename}")
         
-        graded_filename = generate_filename_from_prompt_function(self.prompt_function)
-        with open(graded_filename, "w") as f:
-            json.dump(eval_results, f, indent=2)
-        logger.info(f"Grader Results saved in {graded_filename}")
+        # graded_filename = generate_filename_from_prompt_function(self.prompt_function)
+        # with open(graded_filename, "w") as f:
+        #     json.dump(eval_results, f, indent=2)
+        # logger.info(f"Grader Results saved in {graded_filename}")
         return eval_results
+
+
+if __name__ == "__main__":
+    prompt_function = generate_prompt_function(prompt_function_name)
+    dataset_generator = DatasetGenerator(
+        task_description="""Generate news digest 
+        by analyzing Gmail newsletters within a specified timeframe to extract and 
+        organize topic-specific news items with detailed metadata and possible local 
+        events.""", 
+        prompt_inputs_spec={
+            "start_period": "Beginning date/timeframe for email analysis - defines the lower bound of the search window",
+            "end_period": "Ending date/timeframe for email analysis - defines the upper bound of the search window", 
+            "topic": "Subject matter focus for filtering newsletters and news items (e.g., 'AI news', 'tech', 'blockchain')",
+            "number_of_news_items": "Maximum quantity of news items to include in the final digest output",
+            "location": "Geographic area for filtering relevant local events to include in the events section"
+        }, 
+        filename="dataset.json"
+    )
+    grader = Grader()
+    pipeline = EvalPipeline(dataset_generator, grader, prompt_function, max_parallel_tasks=3)
+    pipeline.run(num_cases=1)

@@ -1,10 +1,35 @@
+import json
 import re
 
 from datetime import datetime, timedelta
 from typing import Optional, Dict
 
+import dspy
 from loguru import logger
+from rich.console import Console
+from rich.panel import Panel
 from .prompt_template_db import PromptTemplateRepresentation, prompt_db
+
+
+class LoggingLM(dspy.LM):
+    console = Console()
+    def __call__(self, *args, **kwargs):
+        
+        value = kwargs.get('prompt') or kwargs
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+                self.console.print(Panel(f"Prompt:\n{json.dumps(parsed, indent=4)}"))
+            except json.JSONDecodeError:
+                # Not JSON, just print the string
+                self.console.print(Panel(f"Prompt:\n{value}"))
+        elif isinstance(value, dict):
+            self.console.print(Panel(f"Prompt:\n{json.dumps(value, indent=4)}"))
+        else:
+            self.console.print(Panel(f"Prompt:\n{value}"))
+
+        return super().__call__(*args, **kwargs)
+
 
 def render(template_string, variables):
     placeholders = re.findall(r"{([^{}]+)}", template_string)
@@ -53,9 +78,12 @@ def ensure_datetime(date_string: str) -> datetime:
 
 
 
-def get_current_prompt(topic: str, start_period: str = "yesterday", end_period: str = "today", number_of_news_items: int = 10, location: str = "San Francisco") -> str:
-    """Get the current prompt with placeholders filled in from the database."""
-    template = prompt_db.get_best_template(topic)
+def build_prompt(topic: str, version: int | None = None, start_period: str = "yesterday", end_period: str = "today", number_of_news_items: int = 10, location: str = "San Francisco") -> str:
+    """Build the prompt with placeholders filled in from the database."""
+    template = prompt_db.get_template(topic, version) if version else prompt_db.get_latest_template(topic)
+    if template is None:
+        raise ValueError(f"No template found for topic {topic} and version {version}")
+    
     return template.prompt_template.format(
         start_period=start_period,
         end_period=end_period,
@@ -64,13 +92,13 @@ def get_current_prompt(topic: str, start_period: str = "yesterday", end_period: 
         location=location
     )
 
-def get_best_prompt_template(topic: str) -> PromptTemplateRepresentation:
-    """Retrieve the prompt template for the topic from the database."""
-    return prompt_db.get_best_template(topic)
+def get_latest_prompt_template(topic: str) -> PromptTemplateRepresentation:
+    """Retrieve the latest prompt template for the topic from the database."""
+    return prompt_db.get_latest_template(topic)
     
 
-def set_prompt_template(topic: str, score: float, prompt: str, placeholders: Optional[Dict[str, str]] = None):
+def set_prompt_template(topic: str, prompt: str, placeholders: Optional[Dict[str, str]] = None):
     """Set the prompt template for the topic in the database."""
-    prompt_db.set_template(topic, score, prompt, placeholders)
+    prompt_db.set_template(topic, prompt, placeholders)
     prompt_db.save()
 

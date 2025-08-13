@@ -17,7 +17,7 @@ import mcp.types as types
 from server.dataset_generator import DatasetGenerator
 from server.gmail import GmailAPIClient, emails_to_json
 from server.prompt_curator import PromptCurator
-from server.utils import ensure_datetime, get_best_prompt_template, set_prompt_template
+from server.utils import build_prompt, ensure_datetime, get_latest_prompt_template, set_prompt_template
 
 # Initialize server
 mcp = FastMCP("ai-news-distiller-mcp")
@@ -146,31 +146,31 @@ def get_user_profile() -> str:
         return "❌ Error getting profile"
 
 
-@mcp.tool()
-def curate_current_prompt(topic: str) -> str:
-    """Retrieve the user feedback stored in the database and curate the current prompt based on it"""
-    prompt_curator = PromptCurator()
+# @mcp.tool()
+# def curate_current_prompt(topic: str) -> str:
+#     """Retrieve the user feedback stored in the database and curate the current prompt based on it"""
+#     prompt_curator = PromptCurator()
     
-    # 1. Get the best prompt for the topic at hand
-    best_prompt_template_representation = get_best_prompt_template(topic)
-    beautiful_console.print(Rule(f"Best prompt template:\n{best_prompt_template_representation}"))
-    # 2. Get the current feedback
-    feedback_string = "\n".join([f"{key}: {value}" for key, value in feedback.items()])
-    beautiful_console.print(Rule(f"Current feedback:\n{feedback_string}"))
-    # 3. Curate the prompt
-    curated_prompt = prompt_curator.forward(prompt=best_prompt_template_representation.prompt_template, feedback=feedback_string)
-    beautiful_console.print(Rule(f"Curated prompt:\n{curated_prompt}"))
-    # 4. Evaluate the result
-    # TODO: Implement the evaluation logic
-    # TODO: Implement the update logic
-    # 5. If the evaluated result is better than the best prompt, update the best prompt
-    if curated_prompt != best_prompt_template_representation:
-        beautiful_console.print(Rule(f"Updating best prompt template for topic {topic}"))
-        # TODO: Update the best prompt template in the database/filesystem
-        set_prompt_template(topic, 0.0, curated_prompt, {})
+#     # 1. Get the latest prompt for the topic at hand
+#     latest_prompt_template_representation = get_latest_prompt_template(topic)
+#     beautiful_console.print(Rule(f"Latest prompt template:\n{latest_prompt_template_representation}"))
+#     # 2. Get the current feedback
+#     feedback_string = "\n".join([f"{key}: {value}" for key, value in feedback.items()])
+#     beautiful_console.print(Rule(f"Current feedback:\n{feedback_string}"))
+#     # 3. Curate the prompt
+#     curated_prompt = prompt_curator.forward(prompt=latest_prompt_template_representation.prompt_template, feedback=feedback_string)
+#     beautiful_console.print(Rule(f"Curated prompt:\n{curated_prompt}"))
+#     # 4. Evaluate the result
+#     # TODO: Implement the evaluation logic
+#     # TODO: Implement the update logic
+#     # 5. If the curated result is different from the latest prompt, update it
+#     if curated_prompt != latest_prompt_template_representation.prompt_template:
+#         beautiful_console.print(Rule(f"Updating latest prompt template for topic {topic}"))
+#         # TODO: Update the latest prompt template in the database/filesystem
+#         set_prompt_template(topic, curated_prompt, {})
         
         
-    return curated_prompt
+#     return curated_prompt
 
 
 @mcp.tool()
@@ -223,6 +223,14 @@ def get_emails(start_date: str = "yesterday", end_date: str = "today", max_email
     emails = gmail_client.get_emails_by_date_range(start_datetime, end_datetime, basic_data=False, include_body=True, max_results=max_emails)
     return emails_to_json(emails)
 
+@mcp.tool()
+def store_prompt_output(topic: str, prompt: str, output: str) -> str:
+    """Store the output you generated using the store_prompt_output tool."""
+    beautiful_console.print(Rule(f"Storing output for topic {topic}"))
+    beautiful_console.print(Rule(f"Prompt: {prompt}"))
+    beautiful_console.print(Rule(f"Output: {output}"))
+    return "Output stored successfully"
+
 ################################################################################
 # Main tool/prompt
 ################################################################################
@@ -267,7 +275,8 @@ def distill_news(topic: str = "AI news", start_period: str = "yesterday", end_pe
     2. {get_prompt(topic, start_period, end_period, number_of_emails, number_of_news_items)}
     3. Before crafting the user response, take into account the following user feedback (if any):
         <feedback>{feedback}</feedback>
-    4. Finally, ask for more feedback to the user about the news digest, and register it using the provide_feedback tool.
+    4. Store the output you generated using the store_prompt_output tool.
+    5. Finally, ask for more feedback to the user about the news digest, and register it using the provide_feedback tool.
     Do not come with an update of the information right away. Just thank the user for the
     feedback if necessary or wait for the user to explicitly ask for it."""
     return structured_prompt
@@ -309,15 +318,8 @@ def get_prompt(topic: str, start_period: str = "yesterday", end_period: str = "t
         >>> get_prompt("AI research", "last week", "today", 3, "San Francisco")
         >>> get_prompt("tech updates", "2024-01-01", "2024-01-07", 5, "New York")
     """
-    prompt_template = get_best_prompt_template(topic)
-    prompt = prompt_template.prompt_template.format(
-        start_period=start_period,
-        end_period=end_period,
-        topic=topic,
-        number_of_news_items=number_of_news_items,
-        location=location
-    )
-    logger.info(f"Retrieved prompt template for topic {prompt_template.topic} (v. {prompt_template.version})")
+    prompt = build_prompt(topic, version=None, start_period=start_period, end_period=end_period, number_of_news_items=number_of_news_items, location=location)    
+    logger.info(f"Retrieved prompt template for topic {topic} (latest version):\n{prompt}")
     return prompt
 
 

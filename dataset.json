@@ -1,17 +1,53 @@
 [
   {
+    "task_description": "Generate news digest by analyzing Gmail newsletters within a specified timeframe to extract and organize topic-specific news items with detailed metadata and possible local events",
+    "idea": "Generate a global health and science news digest by scanning international research and medical newsletters across different regions and timeframes",
     "prompt_inputs": {
-      "start_period": "2024-04-15",
-      "end_period": "2024-04-30",
-      "topic": "AI and Startup Innovations",
-      "number_of_news_items": 7,
-      "location": "San Francisco"
+      "start_period": "2023-06-01",
+      "end_period": "2023-09-15",
+      "topic": "Global Pandemic Research and Medical Innovations",
+      "number_of_news_items": 5,
+      "location": "Global (focus on North America, Europe, Asia)"
     },
     "solution_criteria": [
-      "Correctly extract news items within the specified date range",
-      "Maintain focus on AI and startup innovation topics",
-      "Include local San Francisco events",
-      "Limit output to specified number of news items"
+      "Covers multiple geographical regions",
+      "Includes at least 3 distinct research or medical innovation topics",
+      "Provides publication dates and source metadata",
+      "Highlights local event implications for each news item"
+    ]
+  },
+  {
+    "task_description": "Generate news digest by analyzing Gmail newsletters within a specified timeframe to extract and organize topic-specific news items with detailed metadata and possible local events",
+    "idea": "Analyze local community newsletters from a small town during a seasonal festival period, extracting hyperlocal event and community news",
+    "prompt_inputs": {
+      "start_period": "2023-09-01",
+      "end_period": "2023-09-07",
+      "topic": "Autumn Harvest Festival",
+      "number_of_news_items": 5,
+      "location": "Millbrook, Oregon"
+    },
+    "solution_criteria": [
+      "Extracts at least 3 event-specific news items",
+      "Includes precise event dates and locations",
+      "Captures community participant details",
+      "Maintains chronological order of events"
+    ]
+  },
+  {
+    "task_description": "Generate news digest by analyzing Gmail newsletters within a specified timeframe to extract and organize topic-specific news items with detailed metadata and possible local events",
+    "idea": "Test news digest generation for tech industry newsletters during a major innovation conference week, focusing on AI and emerging technologies in Silicon Valley",
+    "prompt_inputs": {
+      "start_period": "2024-05-06",
+      "end_period": "2024-05-10",
+      "topic": "AI and emerging technologies",
+      "number_of_news_items": 7,
+      "location": "Silicon Valley"
+    },
+    "solution_criteria": [
+      "Generates exactly 7 news items",
+      "All news items are from the specified date range",
+      "News items are relevant to AI and emerging technologies",
+      "Includes local event information from Silicon Valley"
     ]
   }
 ]
